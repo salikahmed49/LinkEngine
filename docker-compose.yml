@@ -1,0 +1,162 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: link-analytics-postgres
+    environment:
+      POSTGRES_USER: linkuser
+      POSTGRES_PASSWORD: linkpassword
+      POSTGRES_DB: linkanalytics
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U linkuser -d linkanalytics"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: link-analytics-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api_1:
+    build: .
+    container_name: link-analytics-api-1
+    environment:
+      DATABASE_URL: postgresql+psycopg://linkuser:linkpassword@postgres:5432/linkanalytics
+      REDIS_URL: redis://redis:6379/0
+      INSTANCE_NAME: api_1
+      REDIS_CACHE_TTL: 86400
+      REDIS_STREAM_NAME: clicks:stream
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api_2:
+    build: .
+    container_name: link-analytics-api-2
+    environment:
+      DATABASE_URL: postgresql+psycopg://linkuser:linkpassword@postgres:5432/linkanalytics
+      REDIS_URL: redis://redis:6379/0
+      INSTANCE_NAME: api_2
+      REDIS_CACHE_TTL: 86400
+      REDIS_STREAM_NAME: clicks:stream
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api_3:
+    build: .
+    container_name: link-analytics-api-3
+    environment:
+      DATABASE_URL: postgresql+psycopg://linkuser:linkpassword@postgres:5432/linkanalytics
+      REDIS_URL: redis://redis:6379/0
+      INSTANCE_NAME: api_3
+      REDIS_CACHE_TTL: 86400
+      REDIS_STREAM_NAME: clicks:stream
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  click_consumer:
+    build: .
+    container_name: link-analytics-consumer
+    command: ["python", "-m", "app.workers.click_consumer"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://linkuser:linkpassword@postgres:5432/linkanalytics
+      REDIS_URL: redis://redis:6379/0
+      REDIS_STREAM_NAME: clicks:stream
+      REDIS_CONSUMER_GROUP: analytics_group
+      CONSUMER_BATCH_SIZE: 100
+      CONSUMER_BLOCK_MS: 2000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: link-analytics-nginx
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api_1
+      - api_2
+      - api_3
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: link-analytics-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api_1
+      - api_2
+      - api_3
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: link-analytics-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: link-analytics-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - nginx
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+

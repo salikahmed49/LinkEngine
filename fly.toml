@@ -1,0 +1,30 @@
+app = "link-analytics-platform"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ENVIRONMENT = "production"
+  DEBUG = "false"
+  REDIS_CACHE_TTL = "86400"
+  REDIS_STREAM_NAME = "clicks:stream"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[http_service.checks]]
+  grace_period = "5s"
+  interval = "10s"
+  method = "GET"
+  timeout = "3s"
+  path = "/health"

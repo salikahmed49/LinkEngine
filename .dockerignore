@@ -1,0 +1,16 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv
+venv/
+.pytest_cache/
+.git
+.gitignore
+.vscode
+.env
+*.db
+app.db
+frontend/node_modules/
+frontend/dist/

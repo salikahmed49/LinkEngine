@@ -1,0 +1,99 @@
+{
+  "description": "Sample API requests and payloads for Link Analytics Platform",
+  "base_url": "http://localhost:8000",
+  "samples": [
+    {
+      "name": "Create Auto-Generated Short Code",
+      "method": "POST",
+      "endpoint": "/links",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "original_url": "https://fastapi.tiangolo.com/tutorial/bigger-applications/"
+      },
+      "expected_status": 201
+    },
+    {
+      "name": "Create Custom Alias (Tech Docs)",
+      "method": "POST",
+      "endpoint": "/links",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "original_url": "https://github.com/torvalds/linux",
+        "custom_alias": "torvalds"
+      },
+      "expected_status": 201
+    },
+    {
+      "name": "Create Custom Alias (Redis Streams)",
+      "method": "POST",
+      "endpoint": "/links",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "original_url": "https://redis.io/docs/latest/develop/data-types/streams/",
+        "custom_alias": "streams"
+      },
+      "expected_status": 201
+    },
+    {
+      "name": "Create Custom Alias (Grafana Dashboards)",
+      "method": "POST",
+      "endpoint": "/links",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "original_url": "https://grafana.com/docs/grafana/latest/dashboards/",
+        "custom_alias": "grafana"
+      },
+      "expected_status": 201
+    },
+    {
+      "name": "Trigger Redirection (Simulate Click with Referrer)",
+      "method": "GET",
+      "endpoint": "/torvalds",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36",
+        "Referer": "https://github.com"
+      },
+      "expected_status": 307
+    },
+    {
+      "name": "Query Link Metadata (No Redirect)",
+      "method": "GET",
+      "endpoint": "/links/torvalds/stats",
+      "expected_status": 200
+    },
+    {
+      "name": "Query Real-Time Stream Analytics",
+      "method": "GET",
+      "endpoint": "/links/torvalds/analytics",
+      "expected_status": 200
+    },
+    {
+      "name": "Update Target URL (Cache Invalidation)",
+      "method": "PATCH",
+      "endpoint": "/links/torvalds",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "original_url": "https://github.com/torvalds/linux/releases"
+      },
+      "expected_status": 200
+    },
+    {
+      "name": "Delete Short Link",
+      "method": "DELETE",
+      "endpoint": "/links/torvalds",
+      "expected_status": 204
+    },
+    {
+      "name": "Check Cluster Health & Active Replica",
+      "method": "GET",
+      "endpoint": "/health",
+      "expected_status": 200
+    },
+    {
+      "name": "Scrape Prometheus Telemetry",
+      "method": "GET",
+      "endpoint": "/metrics",
+      "expected_status": 200
+    }
+  ]
+}
