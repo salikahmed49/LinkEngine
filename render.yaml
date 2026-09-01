@@ -48,14 +48,16 @@ services:
       - key: REDIS_CONSUMER_GROUP
         value: "analytics_group"
 
+  # 3. Managed Redis Service (Listed under services in Render spec)
+  - type: redis
+    name: link-analytics-redis
+    plan: free
+    ipAllowList: [] # internal access only
+    maxmemoryPolicy: noeviction
+
 databases:
-  # Managed PostgreSQL
+  # Managed PostgreSQL Database
   - name: link-analytics-db
     databaseName: linkanalytics
     user: linkuser
     plan: free
-
-  # Managed Redis
-  - name: link-analytics-redis
-    plan: free
-    ipAllowList: [] # internal access only
