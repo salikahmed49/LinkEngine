@@ -177,8 +177,25 @@ def get_and_track_link(
     except RedisError as e:
         logger.warning(f"Failed to cache '{short_code}' in Redis: {e}")
 
-    # Publish click event to stream
-    publish_click_event(short_code, user_agent, referrer, ip_address)
+    # Publish click event to stream (with graceful DB fallback if Redis is offline)
+    msg_id = publish_click_event(short_code, user_agent, referrer, ip_address)
+    if not msg_id:
+        try:
+            event = ClickEvent(
+                event_id=str(uuid.uuid4()),
+                short_code=short_code,
+                clicked_at=datetime.now(timezone.utc),
+                user_agent=user_agent,
+                referrer=referrer,
+                ip_address=ip_address,
+            )
+            db.add(event)
+            link.click_count += 1
+            db.commit()
+            logger.debug(f"Direct DB fallback recorded click for '{short_code}'")
+        except Exception as e:
+            db.rollback()
+            logger.warning(f"Direct DB fallback click record failed: {e}")
 
     return link.original_url
 

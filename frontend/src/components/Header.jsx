@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { Activity, Link2, BarChart3 } from 'lucide-react';
 import { getHealth } from '../services/api';
 
-export default function Header() {
+export default function Header({ activeTab, onTabChange }) {
   const [latency, setLatency] = useState(null);
   const [isOnline, setIsOnline] = useState(true);
 
@@ -34,12 +35,33 @@ export default function Header() {
   return (
     <header className="navbar">
       <div className="navbar-left">
-        <div className="brand-logo">
+        <div className="brand-logo" onClick={() => onTabChange('router')} style={{ cursor: 'pointer' }}>
           <span className="brand-dot" />
           <span className="brand-name">LinkEngine</span>
         </div>
         <span className="brand-divider">/</span>
-        <span className="brand-tagline">Real-Time Stream Telemetry & URL Router</span>
+        
+        {/* Navigation Tabs */}
+        <nav className="header-nav-tabs">
+          <button
+            type="button"
+            onClick={() => onTabChange('router')}
+            className={`tab-btn ${activeTab === 'router' ? 'active' : ''}`}
+          >
+            <Link2 size={13} />
+            <span>Link Router & Stream</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onTabChange('grafana')}
+            className={`tab-btn ${activeTab === 'grafana' ? 'active' : ''}`}
+          >
+            <BarChart3 size={13} className="text-amber" />
+            <span>Grafana Telemetry</span>
+            <span className="live-pill">Live</span>
+          </button>
+        </nav>
       </div>
 
       <div className="navbar-right">
