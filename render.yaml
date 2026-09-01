@@ -1,7 +1,8 @@
 services:
-  # 1. FastAPI Web API Service
+  # 100% Free Tier FastAPI Web Service (Includes Embedded Redis Streams Consumer)
   - type: web
     name: link-analytics-api
+    plan: free
     runtime: python
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
@@ -11,52 +12,21 @@ services:
         value: production
       - key: DEBUG
         value: "false"
+      - key: EMBEDDED_WORKER
+        value: "true"
       - key: DATABASE_URL
         fromDatabase:
           name: link-analytics-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: link-analytics-redis
-          property: connectionString
+        sync: false # Set to your free Upstash Redis URL (e.g. rediss://default:xxxx@xxxx.upstash.io:6379)
       - key: REDIS_CACHE_TTL
         value: "86400"
       - key: REDIS_STREAM_NAME
         value: "clicks:stream"
 
-  # 2. Redis Streams Background Consumer Worker
-  - type: worker
-    name: link-analytics-worker
-    runtime: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python -m app.workers.click_consumer"
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: link-analytics-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: link-analytics-redis
-          property: connectionString
-      - key: REDIS_STREAM_NAME
-        value: "clicks:stream"
-      - key: REDIS_CONSUMER_GROUP
-        value: "analytics_group"
-
-  # 3. Managed Redis Service (Listed under services in Render spec)
-  - type: redis
-    name: link-analytics-redis
-    plan: free
-    ipAllowList: [] # internal access only
-    maxmemoryPolicy: noeviction
-
 databases:
-  # Managed PostgreSQL Database
+  # 100% Free Managed PostgreSQL
   - name: link-analytics-db
     databaseName: linkanalytics
     user: linkuser

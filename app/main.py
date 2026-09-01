@@ -22,10 +22,24 @@ settings = get_settings()
 INSTANCE_ID = os.getenv("INSTANCE_NAME", os.getenv("HOSTNAME", socket.gethostname()))
 
 
+import threading
+from app.workers.click_consumer import ClickConsumer
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Initializing database tables (Instance: {INSTANCE_ID})...")
     Base.metadata.create_all(bind=engine)
+
+    # In single-service or free-tier deployments, run ClickConsumer as an embedded daemon thread
+    if os.getenv("EMBEDDED_WORKER", "true").lower() == "true":
+        logger.info("Starting embedded background ClickConsumer worker thread...")
+        try:
+            consumer = ClickConsumer(consumer_name=f"embedded-{INSTANCE_ID}")
+            worker_thread = threading.Thread(target=consumer.start, daemon=True)
+            worker_thread.start()
+        except Exception as e:
+            logger.warning(f"Could not start embedded worker thread: {e}")
+
     logger.info("Application startup complete.")
     yield
     logger.info("Application shutting down.")
