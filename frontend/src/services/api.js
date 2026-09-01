@@ -2,7 +2,8 @@
  * API Service Client for Link Analytics Platform
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || 'https://link-analytics-api-2kd5.onrender.com';
 export const DISPLAY_DOMAIN = import.meta.env.VITE_DISPLAY_DOMAIN || 'lnk.dev';
 
 export function getLinkUrls(shortCode) {
