@@ -121,6 +121,34 @@ def publish_click_event(
         return None
 
 
+def _record_click_direct(
+    db: Session,
+    short_code: str,
+    user_agent: str | None,
+    referrer: str | None,
+    ip_address: str | None,
+):
+    """Direct database write fallback when Redis Streams is offline."""
+    try:
+        event = ClickEvent(
+            event_id=str(uuid.uuid4()),
+            short_code=short_code,
+            clicked_at=datetime.now(timezone.utc),
+            user_agent=user_agent or "",
+            referrer=referrer or "",
+            ip_address=ip_address or "",
+        )
+        db.add(event)
+        link = db.query(Link).filter(Link.short_code == short_code).first()
+        if link:
+            link.click_count += 1
+        db.commit()
+        logger.debug(f"Direct DB fallback recorded click for '{short_code}'")
+    except Exception as e:
+        db.rollback()
+        logger.warning(f"Direct DB fallback click record failed: {e}")
+
+
 def get_and_track_link(
     db: Session,
     short_code: str,
@@ -153,8 +181,10 @@ def get_and_track_link(
     if cached_url is not None:
         CACHE_HITS.inc()
         logger.debug(f"Cache HIT for '{short_code}'")
-        # Publish click event asynchronously to stream (non-blocking)
-        publish_click_event(short_code, user_agent, referrer, ip_address)
+        # Publish click event asynchronously to stream
+        msg_id = publish_click_event(short_code, user_agent, referrer, ip_address)
+        if not msg_id:
+            _record_click_direct(db, short_code, user_agent, referrer, ip_address)
         return cached_url
 
     # 2. Cache MISS — lookup from database
@@ -180,22 +210,7 @@ def get_and_track_link(
     # Publish click event to stream (with graceful DB fallback if Redis is offline)
     msg_id = publish_click_event(short_code, user_agent, referrer, ip_address)
     if not msg_id:
-        try:
-            event = ClickEvent(
-                event_id=str(uuid.uuid4()),
-                short_code=short_code,
-                clicked_at=datetime.now(timezone.utc),
-                user_agent=user_agent,
-                referrer=referrer,
-                ip_address=ip_address,
-            )
-            db.add(event)
-            link.click_count += 1
-            db.commit()
-            logger.debug(f"Direct DB fallback recorded click for '{short_code}'")
-        except Exception as e:
-            db.rollback()
-            logger.warning(f"Direct DB fallback click record failed: {e}")
+        _record_click_direct(db, short_code, user_agent, referrer, ip_address)
 
     return link.original_url
 
