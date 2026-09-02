@@ -166,30 +166,25 @@ def get_and_track_link(
     Cache MISS:
         SELECT from database, write-back to Redis cache with TTL,
         publish click event to Redis Stream, and return original_url.
-
-    Returns the original_url string, or None if the short_code doesn't exist.
     """
     cache_key = f"{CACHE_PREFIX}{short_code}"
 
-    # 1. Try Redis cache first
+    # 1. Try Redis Cache
     try:
         cached_url = redis_client.get(cache_key)
-    except RedisError as e:
-        logger.warning(f"Redis get failed ({e}); falling back to database")
+    except Exception as e:
+        logger.debug(f"Redis cache get failed ({e}); falling back to DB")
         cached_url = None
 
     if cached_url is not None:
         CACHE_HITS.inc()
-        logger.debug(f"Cache HIT for '{short_code}'")
-        # Publish click event asynchronously to stream
         msg_id = publish_click_event(short_code, user_agent, referrer, ip_address)
         if not msg_id:
             _record_click_direct(db, short_code, user_agent, referrer, ip_address)
         return cached_url
 
-    # 2. Cache MISS — lookup from database
+    # 2. Cache MISS — SELECT from DB
     CACHE_MISSES.inc()
-    logger.debug(f"Cache MISS for '{short_code}'")
     link = db.query(Link).filter(Link.short_code == short_code).first()
     if not link:
         return None
@@ -201,11 +196,8 @@ def get_and_track_link(
             link.original_url,
             ex=settings.redis_cache_ttl,
         )
-        logger.debug(
-            f"Cached '{short_code}' -> {link.original_url} (TTL: {settings.redis_cache_ttl}s)"
-        )
-    except RedisError as e:
-        logger.warning(f"Failed to cache '{short_code}' in Redis: {e}")
+    except Exception as e:
+        logger.debug(f"Redis cache set failed ({e})")
 
     # Publish click event to stream (with graceful DB fallback if Redis is offline)
     msg_id = publish_click_event(short_code, user_agent, referrer, ip_address)
