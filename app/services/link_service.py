@@ -116,8 +116,8 @@ def publish_click_event(
             f"Published click event {event_payload['event_id']} for '{short_code}' to stream '{settings.redis_stream_name}' (ID: {msg_id})"
         )
         return msg_id
-    except RedisError as e:
-        logger.warning(f"Failed to publish click event to Redis Stream '{settings.redis_stream_name}': {e}")
+    except Exception as e:
+        logger.debug(f"Redis Stream xadd not available ({e})")
         return None
 
 
@@ -141,9 +141,9 @@ def _record_click_direct(
         db.add(event)
         link = db.query(Link).filter(Link.short_code == short_code).first()
         if link:
-            link.click_count += 1
+            link.click_count = (link.click_count or 0) + 1
         db.commit()
-        logger.debug(f"Direct DB fallback recorded click for '{short_code}'")
+        logger.info(f"Direct DB fallback recorded click for '{short_code}' (click_count: {link.click_count if link else 1})")
     except Exception as e:
         db.rollback()
         logger.warning(f"Direct DB fallback click record failed: {e}")

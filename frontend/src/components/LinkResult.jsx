@@ -24,7 +24,7 @@ export default function LinkResult({ linkData, onInspectStats }) {
     setBenchmarking(true);
     const start = performance.now();
     try {
-      await fetch(actualUrl, { method: 'HEAD', mode: 'no-cors' });
+      await fetch(actualUrl, { method: 'GET' });
       const duration = (performance.now() - start).toFixed(1);
       setBenchmarkResult({ time: duration, status: 'Resolved' });
     } catch {
