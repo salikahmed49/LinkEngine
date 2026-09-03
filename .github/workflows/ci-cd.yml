@@ -89,8 +89,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy to Fly.io
+      - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
         if: env.FLY_API_TOKEN != ''
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
